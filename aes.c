@@ -66,10 +66,10 @@ void key_scheudling(uint8_t *roundkey, uint8_t *key)
 
     uint8_t word[4]; // array to store the word
 
-    char *str_word = (char *)malloc(sizeof(uint8_t) * 4);
-    char *str_subword = (char *)malloc(sizeof(uint8_t) * 4);
-    char *str_rcon = (char *)malloc(sizeof(uint8_t) * 4);
-    char *str_rcon1 = (char *)malloc(sizeof(uint8_t) * 1);
+    // char *str_word = (char *)malloc(sizeof(uint8_t) * 4);
+    // char *str_subword = (char *)malloc(sizeof(uint8_t) * 4);
+    // char *str_rcon = (char *)malloc(sizeof(uint8_t) * 4);
+    // char *str_rcon1 = (char *)malloc(sizeof(uint8_t) * 1);
 
     for (int i = Nk; i < (Nr + 1) * Nb; ++i)
     {

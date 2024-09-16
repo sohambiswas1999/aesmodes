@@ -18,22 +18,21 @@ uint8_t output[16];
 int main()
 {
     key_scheudling(roundkey, key);
+    FILE *ct = fopen("cipher.txt", "rb");
+    FILE *pt = fopen("decipher.txt", "w");
 
-    int fd = open("cipher.txt", O_RDWR);
-    int dc = open("decipher.txt", O_RDWR);
+    // if (fd_p == -1)
+    //{
+    //  printf("file not opened\n");
+    //}
 
-    while (1)
+    // int j = fread(s, 1, 16, ct);
+    while (fread(s, 1, 16, ct) > 0)
     {
 
-        size_t l = read(fd, s, 16);
+        // j = read(fd, s, 16);
 
-        printf("%d\n", l);
-
-        if (l <= 0)
-        {
-            printf("end of file\n");
-            break;
-        }
+        // printf("\n%d\n", j);
 
         for (int i = 0; i < 4; i++)
         {
@@ -55,9 +54,18 @@ int main()
                 s[4 * i + j] = state[i][j];
             }
         }
+        printf("written on output\n");
+        for (int i = 0; i < 4; i++)
+        {
+            printf("%x,%x,%x,%x\n", s[4 * i + 0], s[4 * i + 1], s[4 * i + 2], s[4 * i + 3]);
+        }
 
-        int k = write(dc, s, 16);
+        int k = fwrite(s, 1, 16, pt);
+
+        printf("%d\n", k);
+        // j = read(fd_c, s, 16);
     }
-    close(dc);
-    close(fd);
+    fclose(ct);
+    fclose(pt);
+    printf("end of decipher\n");
 }

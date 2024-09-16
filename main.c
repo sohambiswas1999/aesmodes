@@ -14,95 +14,200 @@ uint8_t key[16] = {(uint8_t)0x2b, (uint8_t)0x7e, (uint8_t)0x15, (uint8_t)0x16,
                    (uint8_t)0x09, (uint8_t)0xcf, (uint8_t)0x4f, (uint8_t)0x3c};
 
 uint8_t output[16];
+uint8_t IV[16] = {0xfc, 0x4e, 0x53, 0x29, 0xbf, 0xd4, 0x4c, 0x4c, 0x34, 0x76, 0x14, 0x7b, 0xb7, 0xfd, 0xc6, 0xe8};
 
-int main()
+void encrypt(unsigned char *s, uint8_t roundkey[176])
+{
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            state[i][j] = s[4 * i + j];
+        }
+    }
+    printstate(state);
+
+    cipher(state, roundkey);
+
+    printstate(state);
+
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            s[4 * i + j] = state[i][j];
+        }
+    }
+}
+uint8_t unpad(uint8_t *s)
+{
+    uint8_t pv = s[15];
+    if ((pv > 0) && (pv <= 16))
+    {
+        for (uint8_t i = 0; i < pv; ++i)
+        {
+            if (s[15 - i] != pv)
+            {
+                fprintf(stderr, "invalid padding");
+                exit(EXIT_FAILURE);
+            }
+        }
+        return pv;
+    }
+    else
+    {
+        fprintf(stderr, "invalid padding");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void decrypt(unsigned char *s, uint8_t roundkey[176])
+{
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            state[i][j] = s[4 * i + j];
+        }
+    }
+    printstate(state);
+
+    decipher(state, roundkey);
+
+    printstate(state);
+
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            output[4 * i + j] = state[i][j];
+        }
+    }
+}
+
+void ecbencrypt(FILE *pt, FILE *ct)
 {
     key_scheudling(roundkey, key);
-    int fd = open("input.txt", O_RDONLY);
 
-    int fdcipher = open("cipher.txt", O_WRONLY | O_TRUNC | O_CREAT, 0600);
-
-    if (fd == -1)
+    if (pt == NULL)
     {
         printf("file not opened\n");
     }
+    uint8_t j;
 
-    int j = read(fd, s, 16);
-    while (j > 0)
+    while ((j = fread(s, 1, 16, pt)) == 16)
     {
 
-        // j = read(fd, s, 16);
-
-        printf("%d\n", j);
-
-        for (int i = 0; i < 4; i++)
-        {
-            for (int j = 0; j < 4; j++)
-            {
-                state[i][j] = s[4 * i + j];
-            }
-        }
-        printstate(state);
-
-        cipher(state, roundkey);
-
-        printstate(state);
-
-        for (int i = 0; i < 4; i++)
-        {
-            for (int j = 0; j < 4; j++)
-            {
-                s[4 * i + j] = state[i][j];
-            }
-        }
+        encrypt(s, roundkey);
         printf("written on output");
         for (int i = 0; i < 4; i++)
         {
             printf("%x,%x,%x,%x\n", s[4 * i + 0], s[4 * i + 1], s[4 * i + 2], s[4 * i + 3]);
         }
 
-        int k = write(fdcipher, s, 16);
+        int k = fwrite(s, 1, 16, ct);
 
         printf("%d\n", k);
-        j = read(fd, s, 16);
     }
-    close(fdcipher);
-    close(fd);
+
+    uint8_t pad = 16 - j;
+    for (uint8_t i = j; i < 16; i++)
+    {
+        s[i] = pad;
+    }
+
+    encrypt(s, roundkey);
+
+    printf("written on output");
+    for (int i = 0; i < 4; i++)
+    {
+        printf("%x,%x,%x,%x\n", s[4 * i + 0], s[4 * i + 1], s[4 * i + 2], s[4 * i + 3]);
+    }
+
+    int k = fwrite(s, 1, 16, ct);
+
+    printf("%d\n", k);
+
+    fclose(pt);
+    fclose(ct);
     printf("end of cipher\n");
+}
 
-    int fd_r = open("cipher.txt", O_RDONLY);
-    int dc = open("decipher.txt", O_WRONLY | O_TRUNC | O_CREAT, 0600);
-
-    size_t l = read(fd_r, s, 16);
-    while (l > 0)
+void ecbdecrypt(FILE *ct, FILE *pt)
+{
+    key_scheudling(roundkey, key);
+    uint8_t j = fread(s, 1, 16, ct);
+    while (j > 0)
     {
 
-        printf("%d", l);
-
+        decrypt(s, roundkey);
+        printf("written on output\n");
         for (int i = 0; i < 4; i++)
         {
-            for (int j = 0; j < 4; j++)
-            {
-                state[i][j] = s[4 * i + j];
-            }
+            printf("%x,%x,%x,%x\n", s[4 * i + 0], s[4 * i + 1], s[4 * i + 2], s[4 * i + 3]);
         }
-        printstate(state);
-
-        decipher(state, roundkey);
-
-        printstate(state);
-
-        for (int i = 0; i < 4; i++)
+        if (fread(s, 1, 16, ct) == 0)
         {
-            for (int j = 0; j < 4; j++)
-            {
-                s[4 * i + j] = state[i][j];
-            }
+            break;
         }
 
-        int k = write(dc, s, 16);
-        l = read(fd_r, s, 16);
+        int k = fwrite(output, 1, 16, pt);
+
+        // printf("%d\n", k);
+        // j = read(fd_c, s, 16);
     }
-    close(dc);
-    close(fd_r);
+    uint8_t pad_len = unpad(output);
+    int k = fwrite(output, 1, 16 - pad_len, pt);
+
+    fclose(ct);
+    fclose(pt);
+    printf("end of decipher\n");
+}
+
+void cbcencrypt(FILE *pt, FILE *ct, uint8_t *roundkey)
+{
+    uint8_t plain[16];
+    uint8_t byt;
+    fwrite(IV, 1, 16, ct);
+
+    while ((byt = fread(plain, 1, 16, pt)) == 16)
+    {
+        for (uint8_t i = 0; i < 16; ++i)
+        {
+            IV[i] ^= plain[i];
+        }
+        encrypt(IV, roundkey);
+        fwrite(IV, 1, 16, ct);
+    }
+    uint8_t padval = 16 - byt;
+
+    for (uint8_t i = byt; i < 16; ++i)
+    {
+        plain[i] = padval;
+    }
+
+    for (uint8_t i = 0; i < 16; ++i)
+    {
+        IV[i] ^= plain[i];
+    }
+    encrypt(IV, roundkey);
+    fwrite(IV, 1, 16, ct);
+}
+
+void cbcdecrypt(FILE *ct, FILE *pt)
+{
+}
+
+void main()
+{
+    FILE *pt = fopen("input.txt", "r");
+
+    FILE *ct = fopen("cipher.txt", "w");
+
+    ecbencrypt(pt, ct);
+
+    FILE *ct1 = fopen("cipher.txt", "rb");
+    FILE *pt1 = fopen("decipher.txt", "w");
+
+    ecbdecrypt(ct1, pt1);
 }
