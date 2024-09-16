@@ -236,16 +236,184 @@ void cbcdecrypt(FILE *ct, FILE *pt)
     fwrite(output, 1, 16 - pad_len, pt);
 }
 
+void ctrencrypt(FILE *pt, FILE *ct)
+{
+    int j = fwrite(IV, 1, 16, ct);
+    printf("\n%d\n", j);
+    IV[0] = IV[1] = IV[2] = IV[3] = 0x00;
+
+    uint8_t m[16], input[16];
+    uint8_t byt;
+    while ((byt = fread(m, 1, 16, pt)) > 0)
+    {
+        for (uint8_t i = 0; i < 16; i++)
+        {
+            input[i] = IV[i];
+        }
+        encrypt(input, roundkey);
+        for (uint8_t i = 0; i < 16; i++)
+        {
+            m[i] = m[i] ^ input[i];
+        }
+        int j = fwrite(m, 1, 16, ct);
+        printf("\n%d\n", j);
+
+        for (uint8_t i = 0; i < 4; i++)
+        {
+            if (++IV[i] != 0)
+            {
+                break;
+            }
+        }
+    }
+    fclose(pt);
+    fclose(ct);
+    printf("end of cipher");
+}
+
+void ctrdecrypt(FILE *ct, FILE *pt)
+{
+    int j = fread(IV, 1, 16, ct);
+    printf("\n%d\n", j);
+    IV[0] = IV[1] = IV[2] = IV[3] = 0x00;
+
+    uint8_t m[16], input[16];
+    uint8_t byt;
+    while ((byt = fread(m, 1, 16, ct)) > 0)
+    {
+        for (uint8_t i = 0; i < 16; i++)
+        {
+            input[i] = IV[i];
+        }
+        encrypt(input, roundkey);
+        for (uint8_t i = 0; i < 16; i++)
+        {
+            m[i] = m[i] ^ input[i];
+        }
+        int j = fwrite(m, 1, 16, pt);
+        printf("\n%d\n", j);
+
+        for (uint8_t i = 0; i < 4; i++)
+        {
+            if (++IV[i] != 0)
+            {
+                break;
+            }
+        }
+    }
+    fclose(ct);
+    fclose(pt);
+    printf("end of decipher");
+}
+
+void ofbencrypt(FILE *pt, FILE *ct)
+{
+    uint8_t m[16];
+    uint8_t byt;
+    int j = fwrite(IV, 1, 16, ct);
+    printf("\n%d\n", j);
+
+    while ((byt = fread(m, 1, 16, pt)) > 0)
+    {
+        encrypt(IV, roundkey);
+        for (int i = 0; i < 16; i++)
+        {
+            m[i] = m[i] ^ IV[i];
+        }
+
+        int j = fwrite(m, 1, byt, ct);
+        printf("\n%d\n", j);
+    }
+    fclose(pt);
+    fclose(ct);
+    printf("end of cipher");
+}
+
+void ofbdecrypt(FILE *ct, FILE *pt)
+{
+    uint8_t m[16];
+    uint8_t byt;
+    int j = fread(IV, 1, 16, ct);
+    printf("\n%d\n", j);
+
+    while ((byt = fread(m, 1, 16, ct)) > 0)
+    {
+        encrypt(IV, roundkey);
+        for (int i = 0; i < 16; i++)
+        {
+            m[i] = m[i] ^ IV[i];
+        }
+
+        int j = fwrite(m, 1, byt, pt);
+        printf("\n%d\n", j);
+    }
+    fclose(ct);
+    fclose(pt);
+    printf("end of decrypt");
+}
+
+void cfbencrypt(FILE *pt, FILE *ct)
+{
+    uint8_t m[16];
+    uint8_t byt;
+    int j = fwrite(IV, 1, 16, ct);
+    printf("\n%d\n", j);
+
+    while ((byt = fread(m, 1, 16, pt)) > 0)
+    {
+        encrypt(IV, roundkey);
+
+        for (int i = 0; i < 16; i++)
+        {
+            IV[i] = IV[i] ^ m[i];
+        }
+        int j = fwrite(IV, 1, byt, ct);
+        printf("\n%d\n", j);
+    }
+    fclose(pt);
+    fclose(ct);
+    printf("end of cipher");
+}
+
+void cfbdecrypt(FILE *ct, FILE *pt)
+{
+    uint8_t m[16];
+    uint8_t byt;
+
+    int j = fread(IV, 1, 16, ct);
+    printf("\n%d\n", j);
+
+    while ((byt = fread(m, 1, 16, ct)) > 0)
+    {
+        encrypt(IV, roundkey);
+        for (int i = 0; i < 16; i++)
+        {
+            IV[i] = IV[i] ^ m[i];
+        }
+
+        int j = fwrite(IV, 1, 16, pt);
+        printf("\n%d\n", j);
+
+        for (uint8_t i = 0; i < 16; i++)
+        {
+            IV[i] = m[i];
+        }
+    }
+    fclose(ct);
+    fclose(pt);
+    printf("end of decryption");
+}
+
 void main()
 {
     FILE *pt = fopen("input.txt", "r");
 
     FILE *ct = fopen("cipher.txt", "w");
 
-    cbcencrypt(pt, ct, roundkey);
+    cfbencrypt(pt, ct);
 
     FILE *ct1 = fopen("cipher.txt", "rb");
     FILE *pt1 = fopen("decipher.txt", "w");
 
-    cbcdecrypt(ct1, pt1);
+    cfbdecrypt(ct1, pt1);
 }
