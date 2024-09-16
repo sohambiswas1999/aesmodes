@@ -177,7 +177,8 @@ void cbcencrypt(FILE *pt, FILE *ct, uint8_t *roundkey)
             IV[i] ^= plain[i];
         }
         encrypt(IV, roundkey);
-        fwrite(IV, 1, 16, ct);
+        int m = fwrite(IV, 1, 16, ct);
+        printf("\n%d\n", m);
     }
     uint8_t padval = 16 - byt;
 
@@ -191,11 +192,48 @@ void cbcencrypt(FILE *pt, FILE *ct, uint8_t *roundkey)
         IV[i] ^= plain[i];
     }
     encrypt(IV, roundkey);
-    fwrite(IV, 1, 16, ct);
+    int m = fwrite(IV, 1, 16, ct);
+    printf("\n%d\n", m);
+    fclose(pt);
+    fclose(ct);
+    printf("end of cipher\n");
 }
 
 void cbcdecrypt(FILE *ct, FILE *pt)
 {
+    uint8_t c[16], temp[16];
+    uint8_t byt;
+    fread(IV, 1, 16, ct);
+
+    uint8_t j = fread(c, 1, 16, ct);
+    while (j > 0)
+    {
+        for (uint8_t i = 0; i < 16; i++)
+        {
+            temp[i] = c[i];
+        }
+
+        decrypt(c, roundkey);
+
+        for (uint8_t i = 0; i < 16; i++)
+        {
+            output[i] = output[i] ^ IV[i];
+        }
+
+        for (uint8_t i = 0; i < 16; i++)
+        {
+            IV[i] = temp[i];
+        }
+
+        if ((j = fread(c, 1, 16, ct)) == 0)
+        {
+            break;
+        }
+        fwrite(output, 1, 16, pt);
+    }
+
+    uint8_t pad_len = unpad(output);
+    fwrite(output, 1, 16 - pad_len, pt);
 }
 
 void main()
@@ -204,10 +242,10 @@ void main()
 
     FILE *ct = fopen("cipher.txt", "w");
 
-    ecbencrypt(pt, ct);
+    cbcencrypt(pt, ct, roundkey);
 
     FILE *ct1 = fopen("cipher.txt", "rb");
     FILE *pt1 = fopen("decipher.txt", "w");
 
-    ecbdecrypt(ct1, pt1);
+    cbcdecrypt(ct1, pt1);
 }
